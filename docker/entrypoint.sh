@@ -20,5 +20,5 @@ while [ ! -e /tmp/.X11-unix/X0 ]; do
 done
 x11vnc -display :0 -localhost -nopw -forever -quiet &
 websockify --web /usr/share/novnc 6080 localhost:5900 &
-echo "Open http://localhost:6080/vnc.html?autoconnect=1&resize=scale"
+echo "Open http://localhost:6080"
 exec python ArrangementGameTry.py

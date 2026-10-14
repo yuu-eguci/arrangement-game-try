@@ -4,6 +4,7 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends novnc websockify x11vnc xvfb \
     && rm -rf /var/lib/apt/lists/* \
     && mkdir -m 1777 /tmp/.X11-unix
+COPY docker/index.html /usr/share/novnc/index.html
 COPY --from=ghcr.io/astral-sh/uv:0.13@sha256:cdc6093146eb3ff6a40107b38f008b789e050e77ad87865e381d9917da55a168 /uv /usr/local/bin/uv
 
 RUN useradd --create-home player

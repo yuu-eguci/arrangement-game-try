@@ -13,7 +13,7 @@ pygameお試し作品。床と椅子を置ける。ディクショナリを使�
 
 ```bash
 docker compose up --build
-# ブラウザで http://localhost:6080/vnc.html?autoconnect=1&resize=scale を開く
+# ブラウザで http://localhost:6080 を開く
 ```
 
 ブラウザの中にゲーム画面が出る。グレーの背景にひし形 10x5 マスの床下地と、ぴょこぴょこ動く水色の矢印が見えたら OK。
