@@ -46,6 +46,7 @@ base_pos = (20, 60)
 ARROWS = (K_UP, K_DOWN, K_LEFT, K_RIGHT)
 NEXT_ITEM_POS = (10, -30)  # 左上に次に置くアイテムを見せる
 NEXT_ITEM_RECT = pygame.Rect(10, 0, 80, 100)
+UNDO_LIMIT = 500
 
 
 # 画像ロード
@@ -148,7 +149,7 @@ class Game:
         self.cursor = (1, 1)
         self.roll = 1
         self.frame = 0
-        self.history = []  # Backspace で戻すための、変える前の床と椅子
+        self.history = []  # Backspace で戻すための、変える前の床と椅子と矢印の場所
 
     def handle_key(self, key):
         if key == K_BACKSPACE:
@@ -178,11 +179,12 @@ class Game:
         elif key == K_l:
             self.load()
         if (self.floors, self.chairs) != before:
-            self.history.append(before)
+            self.history.append((*before, self.cursor))
+            del self.history[:-UNDO_LIMIT]
 
     def undo(self):
         if self.history:
-            self.floors, self.chairs = self.history.pop()
+            self.floors, self.chairs, self.cursor = self.history.pop()
             self.sounds["switch"].play()
 
     # ディクショナリをそのまま JSON にしまっておく

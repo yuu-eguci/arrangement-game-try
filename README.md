@@ -45,6 +45,7 @@ Docker の中では音は鳴らない (ブラウザ越しには音が届かな�
     Wheel up / down: Up / Down
 
 左上には、次に置く床と椅子が C で選んだ向きで出ている。
+Backspace で戻すと、矢印も戻したマスに移る。
 矢印キーは押しっぱなしで連続して動く (ほかのキーは押しっぱなしにしても 1 回だけ)。
 layout.json と screenshot は ArrangementGameTry.py と同じフォルダにできる (Docker でもこのフォルダに出てくる)。
 Linux の Docker でユーザの uid が 1000 じゃないと、このフォルダに書けなくて保存できない (ターミナルに Could not save と出る)。

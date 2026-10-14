@@ -379,7 +379,22 @@ def test_backspace_undoes_board_changes_one_by_one(game, layout_file):
     game.handle_key(pygame.K_BACKSPACE)
     game.handle_key(pygame.K_BACKSPACE)  # もう戻せないときは何もしない
     assert (game.floors, game.chairs) == ({}, {})
-    assert game.cursor == (2, 1)
+    assert game.cursor == (1, 1)
+
+
+def test_undo_moves_the_arrow_back_to_the_changed_square(game):
+    game.handle_key(K_z)
+    for _ in range(5):
+        game.handle_key(K_RIGHT)
+    game.handle_key(pygame.K_BACKSPACE)
+    assert (game.floors, game.cursor) == ({}, (1, 1))
+
+
+def test_undo_history_is_capped(game):
+    for _ in range(300):
+        game.handle_key(K_a)
+        game.handle_key(K_x)
+    assert len(game.history) == agt.UNDO_LIMIT
 
 
 def test_backspace_undoes_load(game, layout_file):
