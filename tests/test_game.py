@@ -98,3 +98,38 @@ def test_main_returns_on_quit_or_alt_f4(monkeypatch, event):
     monkeypatch.setattr(pygame.event, "get", lambda: [event])
     agt.main()
     assert not pygame.get_init()
+
+
+def test_game_runs_silently_without_audio_device(screen):
+    pygame.mixer.quit()  # サウンドデバイスがなくて mixer が立ち上がらなかったとき
+    game = agt.Game(agt.load_images(), agt.load_sounds())
+    game.handle_key(K_z)
+    game.handle_key(K_RIGHT)
+    assert game.floors == {(1, 1): "brown_floor1"}
+
+
+def test_floor_pixels_do_not_depend_on_placement_order(screen):
+    images = agt.load_images()
+    pictures = []
+    for order in ([(2, 1), (1, 1), (1, 2)], [(1, 2), (1, 1), (2, 1)]):
+        game = agt.Game(images, agt.load_sounds())
+        for pos in order:
+            game.floors[pos] = "brown_floor2"
+        game.draw(screen)
+        pictures.append(pygame.image.tobytes(screen, "RGB"))
+    assert pictures[0] == pictures[1]
+
+
+def test_middle_click_puts_chair_through_main_loop(monkeypatch):
+    games = []
+    real_game = agt.Game
+    monkeypatch.setattr(
+        agt, "Game", lambda *a: games.append(real_game(*a)) or games[-1]
+    )
+    events = [
+        pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=2, pos=(0, 0)),
+        pygame.event.Event(pygame.QUIT),
+    ]
+    monkeypatch.setattr(pygame.event, "get", lambda: events)
+    agt.main()
+    assert games[0].chairs == {(1, 1): "green_chair1"}

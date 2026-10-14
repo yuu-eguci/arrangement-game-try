@@ -1,5 +1,11 @@
-.git
-.venv
-.pytest_cache
-.ruff_cache
+*
+!ArrangementGameTry.py
+!accept_mouse_click.py
+!01_img
+!02_music
+!docker
+!tests
+!pyproject.toml
+!uv.lock
+!.python-version
 **/__pycache__

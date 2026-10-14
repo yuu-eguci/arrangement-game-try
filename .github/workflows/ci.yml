@@ -11,6 +11,7 @@ permissions:
 jobs:
   lint-and-test:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -24,6 +25,7 @@ jobs:
 
   docker:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -37,5 +39,13 @@ jobs:
           curl -fsS -o /dev/null http://localhost:6080/vnc.html
           sleep 3
           docker compose logs
+          docker compose ps --status running --services | grep -x game
+      - name: Game comes back after stop/start
+        run: |
+          docker compose stop
+          docker compose start
+          sleep 5
+          docker compose logs
+          curl -fsS -o /dev/null http://localhost:6080/vnc.html
           docker compose ps --status running --services | grep -x game
           docker compose down

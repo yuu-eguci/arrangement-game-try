@@ -41,3 +41,8 @@ def test_unknown_button_passes_through_with_notice(capsys):
     original = pygame.event.Event(MOUSEBUTTONDOWN, button=6)
     assert accept_mouse_click.switch(original) is original
     assert "Unknown mouse click:6" in capsys.readouterr().out
+
+
+def test_converted_event_has_keydown_attributes():
+    event = accept_mouse_click.switch(pygame.event.Event(MOUSEBUTTONDOWN, button=1))
+    assert (event.mod, event.unicode) == (0, "")

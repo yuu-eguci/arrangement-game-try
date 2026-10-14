@@ -43,10 +43,20 @@ def load_images():
     }
 
 
+class _SilentSound:  # サウンドデバイスがないときの代役
+    def play(self):
+        pass
+
+    def set_volume(self, volume):
+        pass
+
+
 # サウンドロード
 def load_sounds():
     sounds = {
         name: pygame.mixer.Sound(_MUSIC_FOLDER / f"{name}.ogg")
+        if pygame.mixer.get_init()
+        else _SilentSound()
         for name in ("switch", "switch2")
     }
     sounds["switch2"].set_volume(0.2)
@@ -130,8 +140,11 @@ class Game:
             for x in range(1, COLUMNS + 1):
                 screen.blit(self.base0, coordinates((x, y)))
         # 床の絵は 1,3 と 2,4 が同じ向き
-        for pos, name in self.floors.items():
-            screen.blit(self.brown_floor[(int(name[-1]) - 1) % 2], coordinates(pos))
+        for y in range(1, ROWS + 1):
+            for x in range(1, COLUMNS + 1):
+                if (x, y) in self.floors:
+                    image = self.brown_floor[(int(self.floors[(x, y)][-1]) - 1) % 2]
+                    screen.blit(image, coordinates((x, y)))
         # 椅子は奥から順に描く
         for x in range(1, COLUMNS + 1):
             for y in range(ROWS, 0, -1):
