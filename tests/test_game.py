@@ -133,3 +133,47 @@ def test_middle_click_puts_chair_through_main_loop(monkeypatch):
     monkeypatch.setattr(pygame.event, "get", lambda: events)
     agt.main()
     assert games[0].chairs == {(1, 1): "green_chair1"}
+
+
+def test_next_item_preview_follows_c_and_leaves_the_grid_alone(game, screen):
+    def preview_and_rest():
+        game.draw(screen)
+        before = pygame.image.tobytes(screen, "RGB")
+        game.draw_next_item(screen)
+        after = pygame.image.tobytes(screen, "RGB")
+        corner = pygame.image.tobytes(screen.subsurface(agt.NEXT_ITEM_RECT), "RGB")
+        screen.fill((0, 0, 0), agt.NEXT_ITEM_RECT)
+        rest = pygame.image.tobytes(screen, "RGB")
+        game.draw(screen)
+        screen.fill((0, 0, 0), agt.NEXT_ITEM_RECT)
+        return before != after, corner, rest == pygame.image.tobytes(screen, "RGB")
+
+    previews = []
+    for _ in range(5):
+        changed, corner, grid_untouched = preview_and_rest()
+        assert changed
+        assert grid_untouched
+        previews.append(corner)
+        game.handle_key(K_c)
+    assert len(set(previews[:4])) == 4
+    assert previews[4] == previews[0]
+
+
+def test_main_sets_key_repeat_and_chair_icon(monkeypatch):
+    icons = []
+    real_set_icon = pygame.display.set_icon
+    monkeypatch.setattr(
+        pygame.display,
+        "set_icon",
+        lambda s: icons.append(s.get_size()) or real_set_icon(s),
+    )
+    repeats = []
+
+    def get():
+        repeats.append(pygame.key.get_repeat())
+        return [pygame.event.Event(pygame.QUIT)]
+
+    monkeypatch.setattr(pygame.event, "get", get)
+    agt.main()
+    assert repeats == [(300, 80)]
+    assert icons == [(76, 76)]

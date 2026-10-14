@@ -33,6 +33,8 @@ SCREEN_SIZE = (640, 480)
 COLUMNS = 10
 ROWS = 5
 base_pos = (20, 60)
+NEXT_ITEM_POS = (10, -30)  # 左上に次に置くアイテムを見せる
+NEXT_ITEM_RECT = pygame.Rect(10, 0, 80, 100)
 
 
 # 画像ロード
@@ -153,16 +155,25 @@ class Game:
                     screen.blit(image, coordinates((x, y)))
         screen.blit(self.yajirushi[self.frame // 6 % 4], coordinates(self.cursor))
 
+    def draw_next_item(self, screen):  # C で向きを変えたらここに出る
+        screen.blit(self.brown_floor[(self.roll - 1) % 2], NEXT_ITEM_POS)
+        screen.blit(self.green_chair[self.roll - 1], NEXT_ITEM_POS)
+
 
 def main():
     pygame.init()
+    pygame.display.set_icon(
+        pygame.image.load(_IMG_FOLDER / "green_chair.png").subsurface((3, 38, 76, 76))
+    )
     screen = pygame.display.set_mode(SCREEN_SIZE)
+    pygame.key.set_repeat(300, 80)
     pygame.display.set_caption("Arrangement game")
     game = Game(load_images(), load_sounds())
     clock = pygame.time.Clock()
     while True:
         game.frame += 1
         game.draw(screen)
+        game.draw_next_item(screen)
         for event in pygame.event.get():
             # macに対応。
             event = accept_mouse_click.switch(event, scroll_click=K_a)

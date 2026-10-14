@@ -38,6 +38,9 @@ Docker の中では音は鳴らない (ブラウザ越しには音が届かな�
     Right click: X
     Wheel up / down: Up / Down
 
+左上には、次に置く床と椅子が C で選んだ向きで出ている。
+矢印キーは押しっぱなしで連続して動く。
+
 ## Docker なしで動かす
 
 [uv](https://docs.astral.sh/uv/) があれば、ウィンドウで遊べて音も鳴る。
