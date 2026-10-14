@@ -166,7 +166,7 @@ def test_main_sets_key_repeat_and_chair_icon(monkeypatch):
     monkeypatch.setattr(
         pygame.display,
         "set_icon",
-        lambda s: icons.append(s.get_size()) or real_set_icon(s),
+        lambda s: icons.append(pygame.image.tobytes(s, "RGBA")) or real_set_icon(s),
     )
     repeats = []
 
@@ -177,7 +177,8 @@ def test_main_sets_key_repeat_and_chair_icon(monkeypatch):
     monkeypatch.setattr(pygame.event, "get", get)
     agt.main()
     assert repeats == [(300, 80)]
-    assert icons == [(76, 76)]
+    chair = pygame.image.load(Path(agt.__file__).parent / "01_img" / "green_chair.png")
+    assert icons == [pygame.image.tobytes(chair.subsurface((3, 38, 76, 76)), "RGBA")]
 
 
 @pytest.fixture
@@ -194,9 +195,12 @@ def test_s_saves_and_l_loads_the_layout(game, layout_file):
     game.handle_key(pygame.K_s)
     saved = (dict(game.floors), dict(game.chairs))
     game.handle_key(K_x)
-    game.handle_key(K_x)
+    game.handle_key(K_RIGHT)
+    game.handle_key(K_a)
+    game.sounds = {"switch": SoundSpy(), "switch2": SoundSpy()}
     game.handle_key(pygame.K_l)
     assert (game.floors, game.chairs) == saved
+    assert game.sounds["switch"].plays == 1
     assert json.loads(layout_file.read_text()) == {
         "floors": {"1,1": "brown_floor1"},
         "chairs": {"1,1": "green_chair2"},
@@ -213,6 +217,11 @@ def test_s_saves_and_l_loads_the_layout(game, layout_file):
         '{"floors": {"1,1": "green_chair1"}, "chairs": {}}',
         '{"floors": {}, "chairs": {"1,1": "green_chair5"}}',
         '{"floors": {"a,b": "brown_floor1"}, "chairs": {}}',
+        '{"floors": {" 2,1": "brown_floor1"}, "chairs": {}}',
+        '{"floors": {"1_0,5": "brown_floor1"}, "chairs": {}}',
+        '{"floors": {"\uff12,\uff11": "brown_floor1"}, "chairs": {}}',
+        '{"floors": {"2,1": "brown_floor1", "2,1": "brown_floor2"}, "chairs": {}}',
+        pytest.param("[" * 200000, id="deeply-nested"),
     ],
 )
 def test_l_ignores_missing_or_broken_layout(game, screen, layout_file, content):
@@ -235,7 +244,21 @@ def test_p_saves_a_screenshot(monkeypatch, tmp_path):
     agt.main()
     (shot,) = tmp_path.glob("screenshot-*.png")
     pygame.init()
-    assert pygame.image.load(shot).get_size() == agt.SCREEN_SIZE
+    screen = pygame.display.set_mode(agt.SCREEN_SIZE)
+    expected = agt.Game(agt.load_images(), agt.load_sounds())
+    expected.frame = 1
+    expected.draw(screen)
+    expected.draw_next_item(screen)
+    picture = pygame.image.load(shot)
+    assert pygame.image.tobytes(picture, "RGB") == pygame.image.tobytes(screen, "RGB")
+    pygame.quit()
+
+
+def test_screenshots_in_the_same_second_do_not_overwrite(screen, monkeypatch, tmp_path):
+    monkeypatch.setattr(agt, "SCREENSHOT_FOLDER", tmp_path)
+    assert agt.save_screenshot(screen)
+    assert agt.save_screenshot(screen)
+    assert len(list(tmp_path.glob("screenshot-*.png"))) == 2
 
 
 def test_screenshot_failure_does_not_crash(screen, monkeypatch, tmp_path, capsys):
@@ -248,3 +271,76 @@ def test_save_failure_does_not_crash(game, monkeypatch, tmp_path, capsys):
     monkeypatch.setattr(agt, "LAYOUT_FILE", tmp_path / "missing" / "layout.json")
     game.handle_key(pygame.K_s)
     assert "Could not save layout" in capsys.readouterr().out
+
+
+class SoundSpy:
+    def __init__(self):
+        self.plays = 0
+
+    def play(self):
+        self.plays += 1
+
+
+def run_main(monkeypatch, frames):
+    """frames の 1 要素が 1 フレーム分のイベント。最後に QUIT を足して main を回す。"""
+    games = []
+    real_game = agt.Game
+    monkeypatch.setattr(
+        agt, "Game", lambda *a: games.append(real_game(*a)) or games[-1]
+    )
+    queue = [*frames, [pygame.event.Event(pygame.QUIT)]]
+    monkeypatch.setattr(pygame.event, "get", lambda: queue.pop(0))
+    agt.main()
+    return games[0], queue
+
+
+def keydown(key, mod=0):
+    return pygame.event.Event(pygame.KEYDOWN, key=key, mod=mod)
+
+
+def test_holding_a_key_repeats_only_arrows(monkeypatch, layout_file):
+    saves = []
+    monkeypatch.setattr(agt.Game, "save", lambda self: saves.append(1))
+    repeat_s = [keydown(pygame.K_s), keydown(pygame.K_s), keydown(pygame.K_s)]
+    repeat_right = [keydown(K_RIGHT), keydown(K_RIGHT)]
+    repeat_x = [keydown(K_x), keydown(K_x)]
+    game, _ = run_main(
+        monkeypatch,
+        [
+            [keydown(K_z), keydown(K_a), *repeat_x],
+            [*repeat_s, *repeat_right],
+            [
+                pygame.event.Event(pygame.KEYUP, key=pygame.K_s, mod=0),
+                keydown(pygame.K_s),
+            ],
+        ],
+    )
+    assert len(saves) == 2
+    assert game.cursor == (3, 1)
+    assert game.floors == {(1, 1): "brown_floor1"}
+
+
+def test_mouse_clicks_are_never_treated_as_held_keys(monkeypatch):
+    click = pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=4, pos=(0, 0))
+    game, _ = run_main(monkeypatch, [[click, click]])
+    assert game.cursor == (1, 3)
+
+
+def test_f4_without_alt_does_not_quit(monkeypatch):
+    _, queue = run_main(monkeypatch, [[keydown(pygame.K_F4)], []])
+    assert queue == []
+
+
+def test_next_item_preview_includes_the_floor(game, screen):
+    floor = game.brown_floor[0]
+    chair = game.green_chair[0]
+    point = next(
+        (x, y)
+        for y in range(30, 130)
+        for x in range(80)
+        if floor.get_at((x, y)) != floor.get_colorkey()
+        and chair.get_at((x, y)) == chair.get_colorkey()
+    )
+    game.draw_next_item(screen)
+    on_screen = (agt.NEXT_ITEM_POS[0] + point[0], agt.NEXT_ITEM_POS[1] + point[1])
+    assert screen.get_at(on_screen) == floor.get_at(point)

@@ -5,6 +5,7 @@ pygameお試し作品。
 """
 
 import json
+import re
 from datetime import datetime
 from pathlib import Path
 
@@ -16,6 +17,7 @@ from pygame.locals import (
     K_RIGHT,
     K_UP,
     KEYDOWN,
+    KEYUP,
     KMOD_ALT,
     QUIT,
     RLEACCEL,
@@ -40,6 +42,7 @@ SCREEN_SIZE = (640, 480)
 COLUMNS = 10
 ROWS = 5
 base_pos = (20, 60)
+ARROWS = (K_UP, K_DOWN, K_LEFT, K_RIGHT)
 NEXT_ITEM_POS = (10, -30)  # 左上に次に置くアイテムを見せる
 NEXT_ITEM_RECT = pygame.Rect(10, 0, 80, 100)
 
@@ -108,13 +111,20 @@ def next_roll(roll):
     return roll % 4 + 1
 
 
-def read_layer(
-    layer, item
-):  # {"1,1": "brown_floor1"} を {(1, 1): "brown_floor1"} に戻す
+# {"1,1": "brown_floor1"} を {(1, 1): "brown_floor1"} に戻す
+def _no_duplicate_keys(pairs):
+    if len({key for key, _ in pairs}) != len(pairs):
+        raise ValueError("duplicate key")
+    return dict(pairs)
+
+
+def read_layer(layer, item):
     if not isinstance(layer, dict):
         raise ValueError(layer)
     squares = {}
     for key, name in layer.items():
+        if not re.fullmatch(r"[1-9][0-9]?,[1-9][0-9]?", key):
+            raise ValueError(key)
         x, y = (int(n) for n in key.split(","))
         if not (1 <= x <= COLUMNS and 1 <= y <= ROWS):
             raise ValueError(key)
@@ -139,7 +149,7 @@ class Game:
         self.frame = 0
 
     def handle_key(self, key):
-        if key in (K_UP, K_DOWN, K_LEFT, K_RIGHT):
+        if key in ARROWS:
             self.cursor = move_cursor(self.cursor, key)
             self.sounds["switch2"].play()
         # --- Zでアイテムを張る Xでアイテムを剥がす Cでアイテムの向きを変える
@@ -177,11 +187,13 @@ class Game:
 
     def load(self):
         try:
-            layout = json.loads(LAYOUT_FILE.read_text())
+            layout = json.loads(
+                LAYOUT_FILE.read_text(), object_pairs_hook=_no_duplicate_keys
+            )
             floors = read_layer(layout["floors"], "brown_floor")
             chairs = read_layer(layout["chairs"], "green_chair")
-        except (OSError, ValueError, TypeError, KeyError) as error:
-            print(f"Could not load layout: {error!r}")
+        except (OSError, ValueError, TypeError, KeyError, RecursionError) as error:
+            print(f"Could not load layout: {error}")
             return
         self.floors, self.chairs = floors, chairs
         self.sounds["switch"].play()
@@ -212,9 +224,14 @@ class Game:
 
 
 def save_screenshot(screen):
-    name = f"screenshot-{datetime.now():%Y%m%d-%H%M%S}.png"
+    stem = f"screenshot-{datetime.now():%Y%m%d-%H%M%S}"
+    path = SCREENSHOT_FOLDER / f"{stem}.png"
+    number = 1
+    while path.exists():  # 同じ秒に撮っても上書きしない
+        number += 1
+        path = SCREENSHOT_FOLDER / f"{stem}-{number}.png"
     try:
-        pygame.image.save(screen, SCREENSHOT_FOLDER / name)
+        pygame.image.save(screen, path)
     except (OSError, pygame.error) as error:
         print(f"Could not save screenshot: {error}")
         return False
@@ -231,11 +248,18 @@ def main():
     pygame.display.set_caption("Arrangement game")
     game = Game(load_images(), load_sounds())
     clock = pygame.time.Clock()
+    held = set()  # 押しっぱなしで繰り返すのは矢印だけにする
     while True:
         game.frame += 1
         game.draw(screen)
         game.draw_next_item(screen)
         for event in pygame.event.get():
+            if event.type == KEYUP:
+                held.discard(event.key)
+            elif event.type == KEYDOWN:
+                if event.key in held and event.key not in ARROWS:
+                    continue
+                held.add(event.key)
             # macに対応。
             event = accept_mouse_click.switch(event, scroll_click=K_a)
 

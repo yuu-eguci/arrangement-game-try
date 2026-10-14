@@ -35,17 +35,10 @@ jobs:
       - name: Game is served through noVNC
         run: |
           docker compose up -d
-          for _ in $(seq 30); do curl -fsS -o /dev/null http://localhost:6080/vnc.html && break; sleep 1; done
-          curl -fsS -o /dev/null http://localhost:6080/vnc.html
-          sleep 3
-          docker compose logs
-          docker compose ps --status running --services | grep -x game
+          ./docker/check.sh
       - name: Game comes back after stop/start
         run: |
           docker compose stop
           docker compose start
-          sleep 5
-          docker compose logs
-          curl -fsS -o /dev/null http://localhost:6080/vnc.html
-          docker compose ps --status running --services | grep -x game
+          ./docker/check.sh
           docker compose down
