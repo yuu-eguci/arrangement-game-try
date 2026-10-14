@@ -4,6 +4,8 @@ pygameお試し作品。
 床と椅子を置ける。
 """
 
+import json
+from datetime import datetime
 from pathlib import Path
 
 import pygame
@@ -19,6 +21,9 @@ from pygame.locals import (
     RLEACCEL,
     K_a,
     K_c,
+    K_l,
+    K_p,
+    K_s,
     K_x,
     K_z,
 )
@@ -28,6 +33,8 @@ import accept_mouse_click
 _HERE = Path(__file__).resolve().parent
 _IMG_FOLDER = _HERE / "01_img"
 _MUSIC_FOLDER = _HERE / "02_music"
+LAYOUT_FILE = _HERE / "layout.json"
+SCREENSHOT_FOLDER = _HERE
 
 SCREEN_SIZE = (640, 480)
 COLUMNS = 10
@@ -101,6 +108,22 @@ def next_roll(roll):
     return roll % 4 + 1
 
 
+def read_layer(
+    layer, item
+):  # {"1,1": "brown_floor1"} を {(1, 1): "brown_floor1"} に戻す
+    if not isinstance(layer, dict):
+        raise ValueError(layer)
+    squares = {}
+    for key, name in layer.items():
+        x, y = (int(n) for n in key.split(","))
+        if not (1 <= x <= COLUMNS and 1 <= y <= ROWS):
+            raise ValueError(key)
+        if name not in [f"{item}{roll}" for roll in range(1, 5)]:
+            raise ValueError(name)
+        squares[(x, y)] = name
+    return squares
+
+
 class Game:
     def __init__(self, images, sounds):
         self.base0 = images["base0"]
@@ -134,6 +157,34 @@ class Game:
             self.sounds["switch"].play()
         elif key == K_c:
             self.roll = next_roll(self.roll)
+        elif key == K_s:
+            self.save()
+        elif key == K_l:
+            self.load()
+
+    # ディクショナリをそのまま JSON にしまっておく
+    def save(self):
+        layout = {
+            "floors": {f"{x},{y}": name for (x, y), name in self.floors.items()},
+            "chairs": {f"{x},{y}": name for (x, y), name in self.chairs.items()},
+        }
+        try:
+            LAYOUT_FILE.write_text(json.dumps(layout, indent=2) + "\n")
+        except OSError as error:
+            print(f"Could not save layout: {error}")
+            return
+        self.sounds["switch"].play()
+
+    def load(self):
+        try:
+            layout = json.loads(LAYOUT_FILE.read_text())
+            floors = read_layer(layout["floors"], "brown_floor")
+            chairs = read_layer(layout["chairs"], "green_chair")
+        except (OSError, ValueError, TypeError, KeyError) as error:
+            print(f"Could not load layout: {error!r}")
+            return
+        self.floors, self.chairs = floors, chairs
+        self.sounds["switch"].play()
 
     def draw(self, screen):
         screen.fill((230, 230, 230))
@@ -160,6 +211,16 @@ class Game:
         screen.blit(self.green_chair[self.roll - 1], NEXT_ITEM_POS)
 
 
+def save_screenshot(screen):
+    name = f"screenshot-{datetime.now():%Y%m%d-%H%M%S}.png"
+    try:
+        pygame.image.save(screen, SCREENSHOT_FOLDER / name)
+    except (OSError, pygame.error) as error:
+        print(f"Could not save screenshot: {error}")
+        return False
+    return True
+
+
 def main():
     pygame.init()
     pygame.display.set_icon(
@@ -183,7 +244,10 @@ def main():
             ):
                 pygame.quit()
                 return
-            if event.type == KEYDOWN:
+            if event.type == KEYDOWN and event.key == K_p:
+                if save_screenshot(screen):
+                    game.sounds["switch"].play()
+            elif event.type == KEYDOWN:
                 game.handle_key(event.key)
         pygame.display.update()
         clock.tick(60)

@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import pygame
@@ -177,3 +178,73 @@ def test_main_sets_key_repeat_and_chair_icon(monkeypatch):
     agt.main()
     assert repeats == [(300, 80)]
     assert icons == [(76, 76)]
+
+
+@pytest.fixture
+def layout_file(tmp_path, monkeypatch):
+    path = tmp_path / "layout.json"
+    monkeypatch.setattr(agt, "LAYOUT_FILE", path)
+    return path
+
+
+def test_s_saves_and_l_loads_the_layout(game, layout_file):
+    game.handle_key(K_z)
+    game.handle_key(K_c)
+    game.handle_key(K_a)
+    game.handle_key(pygame.K_s)
+    saved = (dict(game.floors), dict(game.chairs))
+    game.handle_key(K_x)
+    game.handle_key(K_x)
+    game.handle_key(pygame.K_l)
+    assert (game.floors, game.chairs) == saved
+    assert json.loads(layout_file.read_text()) == {
+        "floors": {"1,1": "brown_floor1"},
+        "chairs": {"1,1": "green_chair2"},
+    }
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        None,
+        "not json",
+        "[]",
+        '{"floors": {"0,1": "brown_floor1"}, "chairs": {}}',
+        '{"floors": {"1,1": "green_chair1"}, "chairs": {}}',
+        '{"floors": {}, "chairs": {"1,1": "green_chair5"}}',
+        '{"floors": {"a,b": "brown_floor1"}, "chairs": {}}',
+    ],
+)
+def test_l_ignores_missing_or_broken_layout(game, screen, layout_file, content):
+    if content is not None:
+        layout_file.write_text(content)
+    game.handle_key(K_z)
+    game.handle_key(pygame.K_l)
+    assert game.floors == {(1, 1): "brown_floor1"}
+    game.draw(screen)
+
+
+def test_p_saves_a_screenshot(monkeypatch, tmp_path):
+    monkeypatch.setattr(agt, "SCREENSHOT_FOLDER", tmp_path)
+    events = [
+        pygame.event.Event(pygame.KEYDOWN, key=pygame.K_z, mod=0),
+        pygame.event.Event(pygame.KEYDOWN, key=pygame.K_p, mod=0),
+        pygame.event.Event(pygame.QUIT),
+    ]
+    monkeypatch.setattr(pygame.event, "get", lambda: events)
+    agt.main()
+    (shot,) = tmp_path.glob("screenshot-*.png")
+    pygame.init()
+    assert pygame.image.load(shot).get_size() == agt.SCREEN_SIZE
+
+
+def test_screenshot_failure_does_not_crash(screen, monkeypatch, tmp_path, capsys):
+    monkeypatch.setattr(agt, "SCREENSHOT_FOLDER", tmp_path / "missing")
+    agt.save_screenshot(screen)
+    assert "Could not save screenshot" in capsys.readouterr().out
+
+
+def test_save_failure_does_not_crash(game, monkeypatch, tmp_path, capsys):
+    monkeypatch.setattr(agt, "LAYOUT_FILE", tmp_path / "missing" / "layout.json")
+    game.handle_key(pygame.K_s)
+    assert "Could not save layout" in capsys.readouterr().out

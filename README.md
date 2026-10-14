@@ -30,6 +30,9 @@ Docker の中では音は鳴らない (ブラウザ越しには音が届かな�
     X: Remove item
     C: Roll item which will be put next time
     A: Put chair
+    S: Save layout (layout.json)
+    L: Load layout
+    P: Save screenshot (screenshot-日時.png)
     Alt+F4: Quit
 
     MOUSE: ACTION
@@ -40,6 +43,7 @@ Docker の中では音は鳴らない (ブラウザ越しには音が届かな�
 
 左上には、次に置く床と椅子が C で選んだ向きで出ている。
 矢印キーは押しっぱなしで連続して動く。
+layout.json と screenshot は ArrangementGameTry.py と同じフォルダにできる (Docker でもこのフォルダに出てくる)。
 
 ## Docker なしで動かす
 

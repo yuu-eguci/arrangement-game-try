@@ -5,3 +5,5 @@ __pycache__/
 .venv/
 .pytest_cache/
 .ruff_cache/
+layout.json
+screenshot-*.png
