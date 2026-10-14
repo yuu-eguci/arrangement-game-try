@@ -11,6 +11,7 @@ from pathlib import Path
 
 import pygame
 from pygame.locals import (
+    K_BACKSPACE,
     K_DOWN,
     K_F4,
     K_LEFT,
@@ -147,8 +148,13 @@ class Game:
         self.cursor = (1, 1)
         self.roll = 1
         self.frame = 0
+        self.history = []  # Backspace で戻すための、変える前の床と椅子
 
     def handle_key(self, key):
+        if key == K_BACKSPACE:
+            self.undo()
+            return
+        before = (dict(self.floors), dict(self.chairs))
         if key in ARROWS:
             self.cursor = move_cursor(self.cursor, key)
             self.sounds["switch2"].play()
@@ -171,6 +177,13 @@ class Game:
             self.save()
         elif key == K_l:
             self.load()
+        if (self.floors, self.chairs) != before:
+            self.history.append(before)
+
+    def undo(self):
+        if self.history:
+            self.floors, self.chairs = self.history.pop()
+            self.sounds["switch"].play()
 
     # ディクショナリをそのまま JSON にしまっておく
     def save(self):

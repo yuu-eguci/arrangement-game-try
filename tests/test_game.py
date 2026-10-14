@@ -362,3 +362,29 @@ def test_failed_save_keeps_the_previous_layout(game, layout_file, monkeypatch):
     game.handle_key(K_z)
     game.handle_key(pygame.K_s)
     assert layout_file.read_text() == '{"floors": {}, "chairs": {}}'
+
+
+def test_backspace_undoes_board_changes_one_by_one(game, layout_file):
+    game.handle_key(K_z)
+    game.handle_key(K_a)
+    game.handle_key(K_RIGHT)
+    game.handle_key(K_z)
+    game.handle_key(K_x)  # (2,1) の床を剥がす
+    game.handle_key(K_x)  # なにもないので変化なし → undo の対象にしない
+    game.handle_key(pygame.K_BACKSPACE)
+    assert game.floors == {(1, 1): "brown_floor1", (2, 1): "brown_floor1"}
+    game.handle_key(pygame.K_BACKSPACE)
+    game.handle_key(pygame.K_BACKSPACE)
+    assert (game.floors, game.chairs) == ({(1, 1): "brown_floor1"}, {})
+    game.handle_key(pygame.K_BACKSPACE)
+    game.handle_key(pygame.K_BACKSPACE)  # もう戻せないときは何もしない
+    assert (game.floors, game.chairs) == ({}, {})
+    assert game.cursor == (2, 1)
+
+
+def test_backspace_undoes_load(game, layout_file):
+    layout_file.write_text('{"floors": {"5,5": "brown_floor2"}, "chairs": {}}')
+    game.handle_key(K_z)
+    game.handle_key(pygame.K_l)
+    game.handle_key(pygame.K_BACKSPACE)
+    assert game.floors == {(1, 1): "brown_floor1"}

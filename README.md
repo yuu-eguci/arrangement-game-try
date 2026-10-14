@@ -34,6 +34,7 @@ Docker の中では音は鳴らない (ブラウザ越しには音が届かな�
     A: Put chair
     S: Save layout (layout.json)
     L: Load layout
+    Backspace: Undo (Z / A / X / L)
     P: Save screenshot (screenshot-日時.png)
     Alt+F4: Quit
 
