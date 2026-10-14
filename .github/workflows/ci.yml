@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+      - run: uv sync --locked
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run pytest
+      - run: uv audit --locked --preview-features audit-command
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: docker compose build
+      - run: docker compose run --rm game pytest
+      - name: Game is served through noVNC
+        run: |
+          docker compose up -d
+          for _ in $(seq 30); do curl -fsS -o /dev/null http://localhost:6080/vnc.html && break; sleep 1; done
+          curl -fsS -o /dev/null http://localhost:6080/vnc.html
+          sleep 3
+          docker compose logs
+          docker compose ps --status running --services | grep -x game
+          docker compose down
