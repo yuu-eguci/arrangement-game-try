@@ -18,7 +18,7 @@ pygame作品がwindowsでしかキーボード入力を正しく受け取って�
 
 ただし使用条件:
     eventのダミーを返しているので、
-    typeとkey以外のパラメータ(mod, scancode, unicode は空っぽ)は使えません。
+    typeとkey以外のパラメータ(mod, unicode は空っぽ)は使えません。
 
 ========================================
 バージョン1.0(2017-09-22)
@@ -72,7 +72,6 @@ class DummyEvent:
     """
 
     mod = 0
-    scancode = 0
     unicode = ""
 
     def __init__(self, type_, key):

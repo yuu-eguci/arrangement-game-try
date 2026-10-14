@@ -111,13 +111,13 @@ def next_roll(roll):
     return roll % 4 + 1
 
 
-# {"1,1": "brown_floor1"} を {(1, 1): "brown_floor1"} に戻す
-def _no_duplicate_keys(pairs):
+def _no_duplicate_keys(pairs):  # 同じマスが 2 回書いてある JSON は受け付けない
     if len({key for key, _ in pairs}) != len(pairs):
         raise ValueError("duplicate key")
     return dict(pairs)
 
 
+# {"1,1": "brown_floor1"} を {(1, 1): "brown_floor1"} に戻す
 def read_layer(layer, item):
     if not isinstance(layer, dict):
         raise ValueError(layer)
