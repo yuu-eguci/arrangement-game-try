@@ -403,3 +403,40 @@ def test_backspace_undoes_load(game, layout_file):
     game.handle_key(pygame.K_l)
     game.handle_key(pygame.K_BACKSPACE)
     assert game.floors == {(1, 1): "brown_floor1"}
+
+
+def square_center(square):
+    x, y = agt.coordinates(square)
+    return (x + 40, y + 102)
+
+
+def test_square_at_finds_every_square_from_its_center():
+    for x in range(1, agt.COLUMNS + 1):
+        for y in range(1, agt.ROWS + 1):
+            assert agt.square_at(square_center((x, y))) == (x, y)
+    assert agt.square_at((5, 5)) is None
+    assert agt.square_at((630, 470)) is None
+
+
+def click(button, pos):
+    return pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=button, pos=pos)
+
+
+def test_clicking_a_square_acts_on_that_square(monkeypatch):
+    game, _ = run_main(
+        monkeypatch,
+        [[click(1, square_center((3, 2))), click(2, square_center((7, 4)))]],
+    )
+    assert game.floors == {(3, 2): "brown_floor1"}
+    assert game.chairs == {(7, 4): "green_chair1"}
+    assert game.cursor == (7, 4)
+
+
+def test_clicking_outside_the_grid_acts_at_the_arrow_like_2019(monkeypatch):
+    game, _ = run_main(monkeypatch, [[click(1, (5, 5))]])
+    assert (game.floors, game.cursor) == ({(1, 1): "brown_floor1"}, (1, 1))
+
+
+def test_wheel_does_not_jump_to_the_square_under_the_pointer(monkeypatch):
+    game, _ = run_main(monkeypatch, [[click(4, square_center((6, 3)))]])
+    assert game.cursor == (1, 2)

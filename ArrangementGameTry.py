@@ -20,6 +20,7 @@ from pygame.locals import (
     KEYDOWN,
     KEYUP,
     KMOD_ALT,
+    MOUSEBUTTONDOWN,
     QUIT,
     RLEACCEL,
     K_a,
@@ -94,6 +95,17 @@ def coordinates(a):  # (1, 3) とか書くと 1 列目 3 行目のマスの左�
         40 * (x - 1) + 40 * (y - 1) + base_pos[0],
         80 + 20 * (x - 1) - 20 * (y - 1) + base_pos[1],
     )
+
+
+def square_at(
+    pos,
+):  # クリックした場所のマス。ひし形は絵の (40, 102) を中心に横 80 縦 40
+    for x in range(1, COLUMNS + 1):
+        for y in range(1, ROWS + 1):
+            left, top = coordinates((x, y))
+            if abs(pos[0] - left - 40) / 40 + abs(pos[1] - top - 102) / 20 <= 1:
+                return (x, y)
+    return None
 
 
 def move_cursor(pos, key):  # 矢印を上下左右で動かす 端まで行くと反対側へ
@@ -275,6 +287,9 @@ def main():
                 if event.key in held and event.key not in ARROWS:
                     continue
                 held.add(event.key)
+            # クリックしたマスがあれば、矢印をそこへ動かしてから Z / A / X にする
+            if event.type == MOUSEBUTTONDOWN and event.button in (1, 2, 3):
+                game.cursor = square_at(event.pos) or game.cursor
             # macに対応。
             event = accept_mouse_click.switch(event, scroll_click=K_a)
 
