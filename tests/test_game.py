@@ -344,3 +344,21 @@ def test_next_item_preview_includes_the_floor(game, screen):
     game.draw_next_item(screen)
     on_screen = (agt.NEXT_ITEM_POS[0] + point[0], agt.NEXT_ITEM_POS[1] + point[1])
     assert screen.get_at(on_screen) == floor.get_at(point)
+
+
+def test_save_leaves_no_temporary_file(game, layout_file):
+    game.handle_key(K_z)
+    game.handle_key(pygame.K_s)
+    assert [p.name for p in layout_file.parent.iterdir()] == ["layout.json"]
+
+
+def test_failed_save_keeps_the_previous_layout(game, layout_file, monkeypatch):
+    layout_file.write_text('{"floors": {}, "chairs": {}}')
+
+    def broken_dumps(*args, **kwargs):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(agt.Path, "write_text", lambda self, text: broken_dumps())
+    game.handle_key(K_z)
+    game.handle_key(pygame.K_s)
+    assert layout_file.read_text() == '{"floors": {}, "chairs": {}}'
